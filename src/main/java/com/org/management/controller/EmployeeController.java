@@ -36,23 +36,9 @@ public class EmployeeController {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("File is empty");
 		}
 
-		try (CSVReader reader = new CSVReader(new InputStreamReader(file.getInputStream()))) {
-			List<String[]> lines = reader.readAll();
-			for (String[] line : lines) {
-				if (line[0].equals("EmployeeID"))
-					continue;
-
-				Employee employee = Employee.builder().employeeId(Integer.parseInt(line[0])).name(line[1])
-						.title(line[2]).build();
-
-				// Edge case: CEO does not report to anyone
-				if (line[3] != "") {
-					employee.setManagerId(Integer.parseInt(line[3]));
-				}
-
-				employeeService.initialSave(employee);
-			}
-		} catch (IOException | CsvException e) {
+		try {
+			employeeService.initialSave(file);
+		} catch (IOException e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.body("Error processing file: " + e.getMessage());
 		}

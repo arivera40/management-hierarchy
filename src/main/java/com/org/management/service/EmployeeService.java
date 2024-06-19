@@ -1,61 +1,75 @@
 package com.org.management.service;
 
-import java.util.ArrayList;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.List;
-import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import com.opencsv.CSVReader;
+import com.opencsv.exceptions.CsvException;
 import com.org.management.model.Employee;
 import com.org.management.repository.EmployeeRepository;
 
+import lombok.RequiredArgsConstructor;
+
 @Service
+@RequiredArgsConstructor
 public class EmployeeService {
 
-	@Autowired
-	private EmployeeRepository employeeRepository;
+	private final EmployeeRepository employeeRepository;
 
-	public boolean initialSave(Employee employee) {
-		// Save employee only if employeeId is unique.
-		if (!employeeRepository.employeeMap.containsKey(employee.getEmployeeId())) {
-			employeeRepository.employeeMap.put(employee.getEmployeeId(), employee);
-			return true;
+	public boolean initialSave(MultipartFile file) throws IOException {
+		try (CSVReader reader = new CSVReader(new InputStreamReader(file.getInputStream()))) {
+			List<String[]> lines = reader.readAll();
+			for (String[] line : lines) {
+				if (line[0].equals("EmployeeID"))
+					continue;
+				
+	            if (line.length < 3) {
+	                throw new IOException("Invalid CSV format: Insufficient data");
+	            }
+
+				Employee employee = Employee
+									.builder()
+									.employeeId(Integer.parseInt(line[0]))
+									.name(line[1])
+									.title(line[2])
+									.build();
+
+				// Edge case: CEO does not report to anyone
+				if (line[3] != "") {
+					employee.setManagerId(Integer.parseInt(line[3]));
+				}
+
+				employeeRepository.initialSave(employee);
+			}
+		} catch (IOException | CsvException e) {
+			throw new IOException("Error saving employees to repository", e);
 		}
-		return false;
+		return true;
 	}
 	
 	public int save(Employee employee) {
-		// Check if employee already exists
-		if (employeeRepository.employeeMap.containsKey(employee.getEmployeeId())) {
-			return -1;
-		}
-		// Check if manager exists
-		if (!employeeRepository.employeeMap.containsKey(employee.getManagerId())) {
-			return 0;
-		}
-		// Save employee
-		employeeRepository.employeeMap.put(employee.getEmployeeId(), employee);
-		return 1;
+		return employeeRepository.save(employee);
 	}
 
 	public List<Employee> getEmployees() {
-		List<Employee> employees = employeeRepository.employeeMap.values().stream()
-				.collect(Collectors.toList());
-		return employees;
+		return employeeRepository.getEmployees();
 	}
 
 	public Employee getEmployee(Integer employeeId) {
-		return employeeRepository.employeeMap.get(employeeId);
+		return employeeRepository.getEmployee(employeeId);
 	}
 
 	public Employee getManager(Employee employee) {
-		return employeeRepository.employeeMap.get(employee.getManagerId());
+		return employeeRepository.getManager(employee);
 	}
 
 	public List<Employee> getSubordinates(Employee employee) {
-		List<Employee> subordinates = employeeRepository.employeeMap.values().stream()
-				.filter(e -> e.getManagerId() == employee.getEmployeeId()).collect(Collectors.toList());
-		return subordinates;
+		return employeeRepository.getSubordinates(employee);
 	}
 }
