@@ -77,13 +77,14 @@ public class EmployeeController {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("EmployeeID does not exist");
 		}
 
-		Employee manager = employeeService.getManager(employee);
-
-		// Check if manager exists
-		if (manager == null) {
+		try {
+			Employee manager = employeeService.getManager(employee);
+			return ResponseEntity.status(HttpStatus.OK).body(manager);
+		} catch (IOException e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("CEO does not have a manager");
+		} catch (IllegalStateException e) {
+			return ResponseEntity.status(HttpStatus.CONFLICT).body("Employee is missing manager");
 		}
-		return ResponseEntity.status(HttpStatus.OK).body(manager);
 	}
 
 	@RequestMapping("/employees/{id}/subordinates")
@@ -98,7 +99,7 @@ public class EmployeeController {
 		List<Employee> subordinates = employeeService.getSubordinates(employee);
 		// Check if manager exists
 		if (subordinates.isEmpty()) {
-			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Employee has no subordinates");
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Employee has no subordinates");
 		}
 		return ResponseEntity.status(HttpStatus.OK).body(subordinates);
 	}

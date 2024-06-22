@@ -43,6 +43,8 @@ public class EmployeeService {
 				// Edge case: CEO does not report to anyone
 				if (line[3] != "") {
 					employee.setManagerId(Integer.parseInt(line[3]));
+				} else {
+					employee.setManagerId(0);
 				}
 
 				employeeRepository.initialSave(employee);
@@ -65,8 +67,17 @@ public class EmployeeService {
 		return employeeRepository.getEmployee(employeeId);
 	}
 
-	public Employee getManager(Employee employee) {
-		return employeeRepository.getManager(employee);
+	public Employee getManager(Employee employee) throws IOException, IllegalStateException {
+		if (employee.getManagerId() == 0) {
+			throw new IOException();
+		}
+		
+		Employee manager = employeeRepository.getManager(employee);
+		
+		if (manager == null) {
+			throw new IllegalStateException();
+		}
+		return manager;
 	}
 
 	public List<Employee> getSubordinates(Employee employee) {
